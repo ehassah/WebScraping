@@ -1,29 +1,28 @@
 # imports
-import time
-
 from selenium import webdriver
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.chrome.options import Options
-
+from bs4 import BeautifulSoup
+import urllib.request as request
 # website urls
-videos_url = "https://www.allrecipes.com/"
+url = "https://www.allrecipes.com/"
 
 # Chrome session
 # driver = webdriver.Chrome(executable_path=r"C:/Users/ehass/Documents/Dev/Web Scraping/chromedriver.exe")
 
+# adding the extension to block ads (AdBlock)
 chrome_options = webdriver.ChromeOptions()
 chrome_options.add_extension('AdBlock_v3.41.0.crx')
 prefs = {"profile.default_content_setting_values.notifications": 2}
 chrome_options.add_experimental_option("prefs", prefs)
 driver = webdriver.Chrome(chrome_options=chrome_options)
 driver.set_window_size(1600, 1200)
-# time.sleep(10)
 
-
-
-driver.get(videos_url)
+# Open the url
+driver.get(url)
 driver.implicitly_wait(10)
-# navigate to link
+
+# navigate to Browse button and click on All Categories link
 browse_xpath = "//li[@class='browse-recipes']/a[@id='navmenu_recipes']"
 
 BrowseButton = driver.find_element_by_xpath(browse_xpath)
@@ -35,17 +34,25 @@ BrowseCategories.click()
 
 driver.implicitly_wait(3)
 
-# section
-li_path = "//h3[@class='heading__h3' and text()='Diet and Health']/../../section[1]//ul//li//a"
-sections = driver.find_elements_by_xpath(li_path)
-for section in sections:
-    section.click()
+
+# getting all the list of Categories
+li_path = "//h3[@class='heading__h3' and text()='Diet and Health']/../../section[1]//ul//li"
+sections = len(driver.find_elements_by_xpath(li_path))
+
+print(sections)
+#
+for s in range(sections-1):
+
+    print('*****************************clicked on ' + driver.find_element_by_xpath(li_path+'['+str(s+1)+']//a').text+'**********************************')
+    driver.find_element_by_xpath(li_path+'['+str(s+1)+']//a').click()
+
     driver.implicitly_wait(3)
     recipe_card_xpath = "//article[@class='fixed-recipe-card']"
     recipe_cards = len(driver.find_elements_by_xpath(recipe_card_xpath))
 
+    print('Recipe card length '+str(recipe_cards))
+# clicking on each recipes and getting data
     for i in range(recipe_cards-1):
-
 
         # check if the button is displayed
         if len(driver.find_elements_by_xpath(recipe_card_xpath + "[" + str(i + 1) + "]" + "//h3[@class='fixed-recipe-card__h3']")) > 0:
@@ -66,7 +73,14 @@ for section in sections:
             # alt_recipe_name = driver.find_element_by_xpath(alt_recipe_name_xpath)
             if len(driver.find_elements_by_xpath(recipe_name_xpath)) > 0:
                 recipe_name = driver.find_element_by_xpath(recipe_name_xpath)
-                print(recipe_name.text)
+                print('################'+recipe_name.text+'####################')
+
+                # get the image
+                soup = BeautifulSoup(driver.page_source, 'html.parser')
+                icon = soup.find('a', {'class': 'video-play'})
+
+                folder = 'C:/Users/ehass/Documents/Dev/Web Scraping/Images/'
+                request.urlretrieve(icon.img['src'], folder + (icon.img['alt']).replace('"', '').replace('Photo of ', '') + '.jpeg')
 
                 ingredients_xpath = "//li[@class ='checkList__line']//label//span"
                 ingredients = len(driver.find_elements_by_xpath(ingredients_xpath))
@@ -74,7 +88,10 @@ for section in sections:
                 for j in range(ingredients):
                     ingredient_name = driver.find_elements_by_xpath(ingredients_xpath)[j].text
                     print(ingredient_name)
-                    # go back to initial page
+                driver.execute_script("window.history.go(-1)")
+                driver.implicitly_wait(5)
+
+                # go back to initial page
             elif len(driver.find_elements_by_xpath(alt_recipe_name_xpath)) > 0:
                 alt_recipe_name = driver.find_element_by_xpath(alt_recipe_name_xpath)
                 print(alt_recipe_name.text)
@@ -85,6 +102,9 @@ for section in sections:
                     ingredient_name = driver.find_elements_by_xpath(ingredients_xpath)[j].text.strip()
                     print(ingredient_name)
 
-            driver.execute_script("window.history.go(-1)")
-            driver.implicitly_wait(5)
-driver.quit()
+                driver.execute_script("window.history.go(-1)")
+                driver.implicitly_wait(5)
+
+
+    driver.execute_script("window.history.go(-1)")
+    driver.implicitly_wait(5)
